@@ -1,0 +1,11 @@
+# pixi environments
+.pixi/
+*.egg-info
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# MkDocs build output
+site/

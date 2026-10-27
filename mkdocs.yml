@@ -1,0 +1,118 @@
+site_name: PSM spectral primary production model
+site_description: >-
+  A spectrally and vertically resolved model of ocean primary production
+  after Platt & Sathyendranath, driven by satellite chlorophyll-a and PAR.
+site_author: Bror Jönsson
+site_url: https://primaryproduction.github.io/PSM_spectral_PP_model/
+repo_url: https://github.com/PrimaryProduction/PSM_spectral_PP_model
+repo_name: PrimaryProduction/PSM_spectral_PP_model
+edit_uri: edit/main/docs/
+copyright: Bror Jönsson and contributors
+
+exclude_docs: |
+  hooks.py
+  scripts/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - content.code.copy
+    - search.highlight
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Tutorial: tutorial.md
+  - Model description:
+      - theory/index.md
+      - Chlorophyll profile & size classes: theory/chlorophyll.md
+      - Sunlight at the sea surface: theory/sunlight.md
+      - Underwater light field: theory/optics.md
+      - Primary production: theory/primary-production.md
+      - Symbols & units: theory/symbols.md
+  - API reference:
+      - api/index.md
+      - config: api/config.md
+      - chlorophyll: api/chlorophyll.md
+      - size_fraction: api/size_fraction.md
+      - absorption: api/absorption.md
+      - scatter: api/scatter.md
+      - daylight: api/daylight.md
+      - irradiance: api/irradiance.md
+      - surface_light: api/surface_light.md
+      - light_profile: api/light_profile.md
+  - Known issues: known-issues.md
+  - References: references.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: numpy
+            docstring_section_style: table
+            members_order: source
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            heading_level: 2
+            filters: ["!^_"]
+            merge_init_into_class: true
+
+hooks:
+  - docs/hooks.py
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js
+
+extra_css:
+  - stylesheets/extra.css
