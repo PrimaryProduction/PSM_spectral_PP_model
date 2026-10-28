@@ -27,8 +27,6 @@ References
 import numpy as np
 import pandas as pd
 
-import absorption
-import irradiance
 import daylight
 import scatter
 import config
@@ -40,9 +38,10 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
 
     Parameters
     ----------
-    dtm : pandas.Timestamp
-        Date and local solar time. Must be a single timestamp between
-        sunrise and sunset.
+    dtm : datetime-like
+        Date and local solar time (a single timestamp). Outside daylight
+        (sun below the horizon, or before sunrise / after sunset of the
+        sinusoidal PAR cycle) all irradiances are zero.
     lat : float
         Latitude (degrees north).
     par : float
@@ -108,7 +107,9 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
     \qquad \sin\theta_w = \frac{\sin\theta_s}{1.333},
     $$
 
-    and the diffuse light a fixed 5.5 % (transmission 0.945).
+    and the diffuse light a fixed 5.5 % (transmission 0.945). At normal
+    incidence (:math:`\theta_s = 0`) the limit
+    :math:`r = ((n-1)/(n+1))^2 \approx 0.020` is used.
 
     **6. Scaling to satellite PAR.** The instantaneous above-surface
     irradiance is taken from the sinusoidal cycle,
@@ -133,13 +134,26 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
     ['diffuse', 'direct', 'i_zero', 'total']
     >>> irs["total"].shape
     (61,)
+    >>> surface_light.instant(pd.Timestamp("2020-05-06 02:00"), 45, 25)["i_zero"]
+    0.0
     """
+    dtm = pd.to_datetime(dtm)
     wavelengths = config.wavelengths if wavelengths is None else wavelengths
     scdict = scatter.all(wavelengths=wavelengths)
  
     #Calculate daylengths etc
     daydict = daylight.all(dtm, lat)
     zenithR = daydict["zenith_rad"]
+
+    # Fraction of the daylight period elapsed; no light outside (0, 1) or
+    # with the sun below the horizon
+    frac_of_day = 0.0
+    if daydict["daylength"] > 0:
+        frac_of_day = ((dtm - daydict["sunrise"]).total_seconds()/3600)/daydict["daylength"]
+    if not (0 < frac_of_day < 1) or zenithR >= np.pi / 2:
+        dark = np.zeros(np.shape(wavelengths))
+        return {"direct": dark, "diffuse": dark.copy(), "total": dark.copy(), "i_zero": 0.0}
+
     iom = par * np.pi / (2 * daydict["daylength"])
     if verbose:
         print('Daylength: ', daydict["daylength"])
@@ -158,8 +172,8 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
     if verbose:
         print("direct:", direct)
         print("diffuse:", diffuse)
-    i_direct  =  np.sum(direct * np.cos(zenithR))
-    i_diffuse =  np.sum(diffuse)
+    i_direct  =  np.sum(direct * np.cos(zenithR) * scdict["d_lambda"])
+    i_diffuse =  np.sum(diffuse * scdict["d_lambda"])
     if verbose:
         print("i_direct:", i_direct)
         print("i_diffuse:", i_diffuse)
@@ -177,8 +191,12 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
 
     # calculate reflection and convert watts/micron to einsteins/hr/nm
     zenithW = np.arcsin(np.sin(zenithR) / 1.333)
-    ref = 0.5 * (np.sin(zenithR - zenithW)) ** 2 / (np.sin(zenithR + zenithW)) ** 2
-    ref += 0.5 * (np.tan(zenithR - zenithW)) ** 2 / (np.tan(zenithR + zenithW)) ** 2
+    if zenithR > 0:
+        ref = 0.5 * (np.sin(zenithR - zenithW)) ** 2 / (np.sin(zenithR + zenithW)) ** 2
+        ref += 0.5 * (np.tan(zenithR - zenithW)) ** 2 / (np.tan(zenithR + zenithW)) ** 2
+    else:
+        # Normal-incidence limit of the Fresnel equations
+        ref = ((1.333 - 1) / (1.333 + 1)) ** 2
 
     # compute surface irradiance across spectrum
     wl_coeff = wavelengths * 36. / (19.87 * 6.022 * 10 ** 7)
@@ -198,7 +216,6 @@ def instant(dtm, lat, par, wavelengths=None, cloud=0, verbose=False):
 
     # Calculate surface irradiance from total daily surface irradiance
     # (e.g. satellite PAR)
-    frac_of_day = ((dtm - daydict["sunrise"]).seconds/3600)/daydict["daylength"]
     i_surface_par = iom * np.sin(np.pi * frac_of_day)
         
     if verbose:

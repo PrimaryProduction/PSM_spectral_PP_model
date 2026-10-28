@@ -88,10 +88,8 @@ print("Euphotic depth: %.1f m" % irz["euphotic_depth"])
 attenuation coefficients and `irz["mu_d"]` the mean cosine.
 
 !!! note
-    The notebook passes a fixed zenith angle of 80° to `compute_profile`. Here
-    we use the actual solar zenith angle at each time step, which is the
-    physically consistent choice. The zenith angle only enters through the
-    mean cosine of the direct beam.
+    Pass the actual solar zenith angle at each time step. It enters through
+    the mean cosine of the refracted direct beam.
 
 ## 7. Production at noon
 

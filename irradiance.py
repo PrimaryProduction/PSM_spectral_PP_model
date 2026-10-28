@@ -201,9 +201,9 @@ class Irradiance:
     ----------
     alpha1, beta1 : float
         Angstrom exponent and turbidity coefficient of the aerosol optical
-        thickness for the short-wavelength bands (Bird & Riordan 1986).
+        thickness below 500 nm (Bird & Riordan 1986).
     alpha2, beta2 : float
-        As ``alpha1``/``beta1`` for the long-wavelength bands.
+        As ``alpha1``/``beta1`` for 500 nm and longer.
     cd : numpy.ndarray
         Zenith angles (degrees) of the columns of the diffuse correction
         table (see :func:`interpolate_lut`).
@@ -315,25 +315,20 @@ class Irradiance:
         T_a = \exp\left(-\beta\,\lambda^{-\alpha} M\right),
         $$
 
-        with :math:`\lambda` in um. The first ten bands use
-        (:attr:`alpha1`, :attr:`beta1`) and the remaining bands
-        (:attr:`alpha2`, :attr:`beta2`). On the original 24-band grid this
-        is the split at 500 nm of Bird & Riordan (1986); on the default
-        5 nm grid the split falls at 450 nm (see *Known issues*).
+        with :math:`\lambda` in um. Wavelengths below 500 nm use
+        (:attr:`alpha1`, :attr:`beta1`) and longer wavelengths
+        (:attr:`alpha2`, :attr:`beta2`), following Bird & Riordan (1986).
         """
         wld = self.wld
-        if hasattr(self.tr, "ndim"):
-            tr = self.tr[...,None]
-        else:
-            tr = self.tr
         if hasattr(self.airmass, "ndim"):
             airmass = self.airmass[...,None]
         else:
             airmass = self.airmass
         # AEROSOL SCATTERING AND ABSORBTION
         ta = np.zeros_like(self.tr)
-        ta[..., 0:10] = np.exp(-self.beta1 * wld[0:10] ** (-self.alpha1) * airmass)
-        ta[..., 10:]  = np.exp(-self.beta2 * wld[10:]  ** (-self.alpha2) * airmass)
+        short = wld < 0.5
+        ta[..., short]  = np.exp(-self.beta1 * wld[short]  ** (-self.alpha1) * airmass)
+        ta[..., ~short] = np.exp(-self.beta2 * wld[~short] ** (-self.alpha2) * airmass)
         return ta
     @property
     def ta(self):
@@ -380,7 +375,6 @@ class Irradiance:
         with ozone column :math:`H_o` = 0.344 atm cm and the ozone air mass
         :math:`M_o` of Paltridge & Platt (1976).
         """
-        airmass = self.airmass
         ao  = self.cfdict["ao"]
         em0 = 35. / ((1224. * (np.cos(self.zenith_rad)) ** 2. + 1.) ** 0.5)
         if hasattr(em0, "ndim"):

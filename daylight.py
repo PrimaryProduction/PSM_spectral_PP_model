@@ -113,19 +113,19 @@ def thekaekara(dtm):
     ported from the Fortran PSM code; :func:`surface_light.instant` uses it as
     ``TOA_Irr / 1353`` to scale the clear-sky spectra.
 
-    .. warning::
-       The table lookup compares the loop *index* (not the tabulated day) with
-       the day of year, so for day of year 24 or later the last table segment
-       is extrapolated (for example about 1380 W m-2 on 21 June instead of
-       about 1310 W m-2). Because :func:`surface_light.instant` later rescales
-       the spectrum to match the satellite PAR, this does not affect the
-       model output. See the *Known issues* page of the documentation.
-
     References
     ----------
     .. [1] Thekaekara, M.P. & Drummond, A.J. (1971). Standard values for the
        solar constant and its spectral components. *Nature Physical Science*,
        229, 6-9. https://doi.org/10.1038/physci229006a0
+
+    Examples
+    --------
+    >>> import daylight
+    >>> daylight.thekaekara("2020-01-02")
+    1399.0
+    >>> round(daylight.thekaekara("2020-06-21"), 1)
+    1309.7
     """
     dtm = pd.to_datetime(dtm)
     jday = dtm.day_of_year
@@ -140,11 +140,10 @@ def thekaekara(dtm):
         1329., 1344., 1350., 1353., 1347., 1375., 1392., 1398., 1399.
     ]
 
-    # NOTE (jad): I would personally use np.argmin here but I want the initial version to closely follow
-    # what was done in the fortran version
+    # Find the first tabulated day on or after jday (as in the Fortran version)
     for i in range(len(day_points)):
         idx = i
-        if i >= jday:
+        if day_points[i] >= jday:
             break
 
     if idx == 0:
@@ -281,7 +280,9 @@ def zenith_time(dtm, lat, zenith_deg, return_dtm=True):
         Local solar time before noon at which the zenith angle equals
         ``zenith_deg``. Two special values flag the cases where no crossing
         exists: 0 h when the zenith angle stays below ``zenith_deg`` all day
-        (e.g. polar day), and -1 h when the sun never gets that high.
+        (e.g. polar day), and -1 h when the sun never gets that high. In the
+        latter case a scalar call with ``return_dtm=True`` returns
+        ``pandas.NaT``.
 
     Notes
     -----
@@ -300,6 +301,8 @@ def zenith_time(dtm, lat, zenith_deg, return_dtm=True):
     >>> import daylight
     >>> daylight.zenith_time("2020-05-06", 45, 80)
     Timestamp('2020-05-06 05:49:19')
+    >>> daylight.zenith_time("2020-12-21", 80, 80)
+    NaT
     """
     dtm = pd.to_datetime(dtm)
     dlt = delta(dtm)
@@ -307,7 +310,8 @@ def zenith_time(dtm, lat, zenith_deg, return_dtm=True):
     zenith_rad  = np.deg2rad(zenith_deg)
     cos_theta   = ((np.cos(zenith_rad) - (np.sin(dlt) * np.sin(phi))) /
                    (np.cos(dlt) * np.cos(phi)))
-    theta_1     = np.arccos(cos_theta)
+    with np.errstate(invalid="ignore"):   # |cos_theta| > 1: no crossing
+        theta_1 = np.arccos(cos_theta)
 
     def scalar_theta2time(theta_1):
         if cos_theta <= -1.0:
@@ -319,6 +323,8 @@ def zenith_time(dtm, lat, zenith_deg, return_dtm=True):
         if local_time > 12.0 :
             local_time = 24.0 - local_time
         if return_dtm:
+            if local_time < 0:
+                return pd.NaT
             return decimal_hour_to_dtm(dtm, local_time)
         return local_time
 
@@ -381,9 +387,9 @@ def sunrise(dtm, lat, return_dtm=True, return_all=False):
     srise : pandas.Timestamp or float
         Time of sunrise. During polar night sunrise is set to 12:00 and during
         polar day to 00:00.
-    delta : callable
-        Only if ``return_all``. Note that this is the :func:`delta`
-        *function*, not the declination value (see *Known issues*).
+    delta : float
+        Only if ``return_all``. Solar declination (radians), see
+        :func:`delta`.
     phi : float
         Only if ``return_all``. Latitude (radians).
 
@@ -415,7 +421,7 @@ def sunrise(dtm, lat, return_dtm=True, return_all=False):
     if return_dtm:
         srise = decimal_hour_to_dtm(dtm, srise)
     if return_all:
-        return srise, delta, phi
+        return srise, delta(dtm), phi
     else:
         return srise
 
@@ -441,7 +447,9 @@ def time_range(dtm, lat, steps=12, zenith_deg=None):
     Returns
     -------
     pandas.DatetimeIndex
-        ``steps`` evenly spaced times.
+        ``steps`` evenly spaced times. Empty if the sun never rises (polar
+        night) or never reaches ``zenith_deg``, so loops over the result
+        simply contribute nothing.
 
     Examples
     --------
@@ -449,6 +457,8 @@ def time_range(dtm, lat, steps=12, zenith_deg=None):
     >>> t = daylight.time_range("2020-05-06", 45, steps=6, zenith_deg=80)
     >>> len(t), t[0].strftime("%H:%M"), t[-1].strftime("%H:%M")
     (6, '05:49', '18:10')
+    >>> len(daylight.time_range("2020-12-21", 80, zenith_deg=80))
+    0
     """
     dtm = pd.to_datetime(dtm)
     if zenith_deg is None:
@@ -456,6 +466,8 @@ def time_range(dtm, lat, steps=12, zenith_deg=None):
     else:
         dtm1 = zenith_time(dtm, lat, zenith_deg)
     noon = dtm.normalize() + pd.Timedelta('12:00:00')
+    if pd.isna(dtm1) or dtm1 >= noon:
+        return pd.DatetimeIndex([])
     return pd.date_range(dtm1, noon+(noon-dtm1), periods=steps)
 
 
@@ -519,13 +531,13 @@ def daylength(dtm, lat):
     latInRad = np.deg2rad(lat)
     declinationOfEarth = 23.45*np.sin(np.deg2rad(360.0*(283.0+day_of_year)/365.0))
     mask = -np.tan(latInRad) * np.tan(np.deg2rad(declinationOfEarth))
-    hourAngle = np.rad2deg(np.arccos(-np.tan(latInRad) * np.tan(np.deg2rad(declinationOfEarth))))
+    with np.errstate(invalid="ignore"):   # polar day/night, masked below
+        hourAngle = np.rad2deg(np.arccos(-np.tan(latInRad) * np.tan(np.deg2rad(declinationOfEarth))))
     day_hours = np.atleast_1d(2.0*hourAngle/15.0)
     day_hours[mask<=-1.0] = 24.0
     day_hours[mask>= 1.0] = 0
     day_hours = np.squeeze(day_hours)
     return day_hours.item() if day_hours.ndim==0 else day_hours
-    #return 2 * (12. - sunrise(dtm, lat, return_dtm=False))
 
 
 #def mns_to_doy(mnlist):
@@ -544,19 +556,3 @@ def daylength(dtm, lat):
 #    np.cumsum(mnlen) - 15
 #    cmnlen = np.cumsum(mnlen) - 15
 #    return cmnlen[mnlist-1]
-
-
-####
-    sunrise, delta, phi = computeSunrise(iday, lat)
-    zen_80_time = compute_zenith_time(delta, phi, 80)
-    times = genTimeArray(zen_80_time, num_time_steps)
-    zenR_array = np.asarray([computeZenith(x, delta, phi) for x in times])
-    delta_t = (12.0 - sunrise) / len(times)
-    start_time_idx = 0
-    start_time = zen_80_time
-    daylength = 2 * (12.0 - sunrise)
-    iom = par * np.pi / (2 * daylength)
-    delta_prestart = start_time - sunrise
-    if debug:
-        print('Daylength: ', daylength)
-        print('iom: ', iom)

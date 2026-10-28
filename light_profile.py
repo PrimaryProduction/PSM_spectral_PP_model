@@ -37,7 +37,7 @@ def compute_profile(chl_profile,
                     zenith_deg,
                     direct,
                     diffuse,
-                    yellow_substance=0.3,
+                    yellow_substance=None,
                     wavelengths=None,
                     depths=None):
     r"""Compute the spectral light field as a function of depth.
@@ -57,9 +57,9 @@ def compute_profile(chl_profile,
     diffuse : numpy.ndarray
         Diffuse spectral irradiance just below the surface, same shape and
         units as ``direct``.
-    yellow_substance : float, default 0.3
+    yellow_substance : float, optional
         Ratio :math:`a_y(440)/a_{ph}(440)` of CDOM to phytoplankton absorption
-        at 440 nm. ``None`` uses :data:`config.yellow_substance`.
+        at 440 nm. Defaults to :data:`config.yellow_substance` (0.3).
     wavelengths : numpy.ndarray, optional
         Wavelengths (nm) matching ``direct``/``diffuse``. Defaults to
         :data:`config.wavelengths`.
@@ -82,9 +82,16 @@ def compute_profile(chl_profile,
             Mean cosine of the downwelling light just below the surface.
         ``"euphotic_depth"`` : float
             Deepest grid depth (m) at which PAR is still at least 1 % of
-            the PAR at the first depth level.
+            the PAR at the first depth level. NaN if there is no light at the
+            surface (e.g. at night).
         ``"atot"`` : numpy.ndarray, shape (n_depths, n_wavelengths)
             Total absorption coefficient :math:`a(z, \lambda)` (m-1).
+
+    Raises
+    ------
+    ValueError
+        If ``chl_profile`` and ``depths`` have different lengths (e.g. a
+        profile truncated with ``mld`` combined with the default depths).
 
     Notes
     -----
@@ -153,11 +160,16 @@ def compute_profile(chl_profile,
     wavelengths = config.wavelengths if wavelengths is None else wavelengths
     yellow_substance = config.yellow_substance if yellow_substance is None else yellow_substance
     scdict = scatter.all(wavelengths=wavelengths)
+    if len(chl_profile) != len(depths):
+        raise ValueError(f"chl_profile has {len(chl_profile)} levels but depths has "
+                         f"{len(depths)}; pass the matching depths grid")
 
     zenw = np.arcsin(np.sin(np.deg2rad(zenith_deg)) / 1.333)
 
     I0 = direct + diffuse
-    mu_d = (direct * np.cos(zenw) + diffuse * 0.831000) / I0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mu_d = (direct * np.cos(zenw) + diffuse * 0.831000) / I0
+    mu_d = np.where(I0 > 0, mu_d, 0.831)   # no light: any finite mean cosine
 
     ac,_ = calc_ac(chl_profile, wavelengths)
     ac440idx = np.argmin(np.abs(wavelengths-440))
@@ -182,12 +194,9 @@ def compute_profile(chl_profile,
         Izlist.append(Izlist[-1] * np.exp(-Ki * dz))
     Iz = np.array(Izlist)[1:,:]
     izpar=(Iz*scdict["d_lambda"]).sum(axis=1)
-    euphotic_depth = depths[np.nonzero(izpar/izpar[0]>=0.01)[0].max()]
+    if izpar[0] > 0:
+        euphotic_depth = depths[np.nonzero(izpar/izpar[0]>=0.01)[0].max()]
+    else:
+        euphotic_depth = np.nan
     return dict(Iz=Iz, IzPAR=izpar, K=K, mu_d=mu_d,
                 euphotic_depth=euphotic_depth, atot=atot)
-
-    x=np.log10(100*izpar/izpar[0])[::-1] #need to reverse arrays as np.interp cannot handle decreasing values of x :(
-    y=depth_array[::-1]
-    euphotic_depth=np.interp(0,x,y)
-    euph_id=np.where(depth_array<euphotic_depth)[0][-1]
-    return izpar, Iz, K, euphotic_depth, euph_id, ac

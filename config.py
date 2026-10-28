@@ -25,7 +25,6 @@ is linearly interpolated from these tables.
 """
 
 import numpy as np
-import pandas as pd
 
 #from scatter import calc_aw, calc_ay, calc_bbr, calc_bw
 

@@ -94,10 +94,9 @@ def calc_ac(chl, wavelengths=None, size_class="all"):
         spectra are linearly interpolated (and held constant outside
         400-700 nm). Defaults to the native grid :data:`config.phyto_wl`.
     size_class : {"all", "pico", "nano", "micro"}, default "all"
-        Which size class to return. Matching is done on the first of the
-        letters ``n``, ``m`` or ``p`` found in the (lower-cased) string; any
-        other string returns the total. **Only honoured for scalar** ``chl``;
-        array input always returns the total absorption.
+        Which size class to return, selected by the first letter of the
+        (case-insensitive) string, so ``"picoplankton"`` or ``"p"`` also
+        work. Any other string returns the total.
 
     Returns
     -------
@@ -124,9 +123,6 @@ def calc_ac(chl, wavelengths=None, size_class="all"):
     and :math:`a^*_i` are the module arrays :data:`PICO`, :data:`NANO` and
     :data:`MICRO`.
 
-    When ``size_class`` selects the nanoplankton, the string ``"nano"`` is
-    printed to standard output.
-
     References
     ----------
     .. [1] Brewin et al. (2011), https://doi.org/10.1364/AO.50.004535
@@ -143,6 +139,9 @@ def calc_ac(chl, wavelengths=None, size_class="all"):
     >>> a440, _ = absorption.calc_ac(0.5, wavelengths=np.array([440.0]))
     >>> a440.shape
     (1,)
+    >>> pico, _ = absorption.calc_ac(chlz, size_class="pico")
+    >>> bool((pico <= ac).all())
+    True
     """
     pico_chl, nano_chl, micro_chl = calc_psd(chl)
 
@@ -156,19 +155,19 @@ def calc_ac(chl, wavelengths=None, size_class="all"):
         micro_abs = MICRO
 
     if np.iterable(chl):
-        absorption = ((pico_abs  * pico_chl[...,None]) + 
-                      (nano_abs  * nano_chl[...,None]) + 
-                      (micro_abs * micro_chl[...,None]))
+        pico_chl  = pico_chl[...,None]
+        nano_chl  = nano_chl[...,None]
+        micro_chl = micro_chl[...,None]
+
+    size_class = size_class.lower()
+    if size_class.startswith("n"):
+        absorption = nano_abs*nano_chl 
+    elif size_class.startswith("m"):
+        absorption = micro_abs*micro_chl 
+    elif size_class.startswith("p"):
+        absorption = pico_abs*pico_chl 
     else:
-        if "n" in size_class.lower():
-            print("nano")
-            absorption = nano_abs*nano_chl 
-        elif "m" in size_class.lower():
-            absorption = micro_abs*micro_chl 
-        elif "p" in size_class.lower():
-            absorption = pico_abs*pico_chl 
-        else:
-            absorption = (pico_abs*pico_chl + nano_abs*nano_chl + micro_abs*micro_chl)
+        absorption = (pico_abs*pico_chl + nano_abs*nano_chl + micro_abs*micro_chl)
 
     mean_absorption = absorption.mean(axis=-1)
     return (absorption, np.squeeze(mean_absorption))

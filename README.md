@@ -221,17 +221,18 @@ pixi run python -m doctest *.py
 
 ## Known issues
 
-The documentation describes the code as it is and does not change its
-behaviour. A few points to be aware of (details on the
+Several bugs in the original code have been fixed, including NaN output when
+the sun is directly overhead or below the horizon, a crash in polar night,
+the aerosol band split in the clear-sky model, and inconsistencies in the
+notebook. The effect on typical daytime results is about 0.1 % in underwater
+PAR. The
 [Known issues](https://primaryproduction.github.io/PSM_spectral_PP_model/known-issues/)
-page):
+page lists every fix with its effect on the output, and the remaining
+behaviour worth knowing, for example:
 
-- `daylight.thekaekara` extrapolates the annual top-of-atmosphere table after
-  day 23. The value cancels in `surface_light.instant`, so model output is
-  unaffected.
-- The aerosol band split in `irradiance.Irradiance` is index-based and falls
-  at 450 nm on the default grid instead of 500 nm.
-- `surface_light.instant` is only valid between sunrise and sunset.
+- `daylength` and `sunrise` use slightly different declination formulas
+  (effect on daily production ≤ 0.12 %).
+- The diurnal light cycle is sinusoidal, also during polar day.
 - `chlorophyll.sinusodal_profile` returns a Gaussian profile despite its name.
 
 ## References

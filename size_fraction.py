@@ -35,8 +35,6 @@ References
 
 import numpy as np
 
-from config import phyto_wl
-
 cm_pn = 0.77
 s_pn = 0.94 / cm_pn
 cm_p = 0.13
@@ -93,7 +91,11 @@ def brewin(chl):
     >>> pico, nano, micro = brewin(0.3)
     >>> round(pico + nano + micro, 6)
     0.3
+    >>> [round(float(x), 4) for x in brewin([0.1, 1.0])[0]]
+    [0.0597, 0.1297]
     """
+    if np.iterable(chl):
+        chl = np.asarray(chl, dtype=float)
     #compute fractions
     pico_chl  = cm_p * (1.0 - np.exp(-s_p * chl))
     nano_chl  = cm_pn * (1.0 - np.exp(-s_pn * chl)) - pico_chl
