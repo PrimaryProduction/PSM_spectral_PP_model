@@ -109,7 +109,7 @@ the spectral initial slope and the unit-conversion factor.
 ## 8. Over the day
 
 ```python
-times = daylight.time_range(day, lat, zenith_deg=80, steps=11)
+times = daylight.time_range(day, lat, steps=13)    # sunrise to sunset
 pp = []
 for t in times:
     irs = surface_light.instant(t, lat, par, wavelengths=wavelengths)
@@ -126,9 +126,11 @@ daily_total = np.trapezoid(daily_profile, depths)  # mg C m-2 d-1
 print("Daily water-column production: %.0f mg C m-2 d-1" % daily_total)
 ```
 
-The time steps run from the moment the sun reaches 80° zenith in the morning
-to the matching time in the afternoon, so the low-light periods near sunrise
-and sunset are left out. Use more `steps` for a more accurate integral.
+The time steps run from sunrise to sunset, symmetric about noon. Surface light
+is zero at both ends, so no daylight is left out. Starting at a zenith angle of
+80° instead (`zenith_deg=80`) would miss about an hour at each end of the day
+and underestimate daily production by about 2.5 % here. Use more `steps` for a
+more accurate integral.
 
 !!! tip "Things to try"
     - Move the chlorophyll maximum: `chlorophyll.sinusodal_profile(0.3, rho=0.8, z_m=40)`.

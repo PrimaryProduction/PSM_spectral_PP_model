@@ -91,9 +91,9 @@ depth-resolved case requires numerical integration.
 
 ![Primary production profiles](../img/pp_profiles.png){ .figure }
 
-*Left: instantaneous production from the 80° zenith time to noon. Right:
-daily production at each depth, integrated with the trapezoidal rule over the
-day (symmetric about noon). Same conditions as the
+*Left: instantaneous production from shortly after sunrise to noon. Right:
+daily production at each depth, integrated with the trapezoidal rule from
+sunrise to sunset. Same conditions as the
 [tutorial](../tutorial.md).*
 
 Production is highest near the surface, where light is plentiful, and

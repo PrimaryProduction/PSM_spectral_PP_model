@@ -48,7 +48,7 @@ Pb_m, alpha_b = 6.0, 0.02                  # photosynthesis parameters
 alpha_spec = alpha_b * ac * 6022.0 / (2.77 * 36.0 * ac.mean(axis=1)[:, None])
 
 pp = []
-times = daylight.time_range("2020-05-06", lat, zenith_deg=80, steps=11)
+times = daylight.time_range("2020-05-06", lat, steps=13)   # sunrise to sunset
 for t in times:
     irs = surface_light.instant(t, lat, par)
     zen = np.rad2deg(daylight.zenith(t, lat))

@@ -34,6 +34,21 @@ default grids.
 - The daily profile summed time steps without their length. It is now
   integrated with the trapezoidal rule over hours (mg C m⁻³ d⁻¹), and the
   water-column total is printed.
+- The daily integration started at a solar zenith angle of 80°, which left
+  out about an hour at each end of the day (−2.5 % daily production at 45° N
+  in May). It now runs from sunrise to sunset, as do the examples in the
+  README, home page and tutorial and the production figure.
+- `chlz` was overwritten in the profile plot, so the size fractions,
+  absorption and light field used a different Chl profile (0.5 mg m⁻³,
+  $z_m$ = 80 m) from the production section. One profile is now used
+  throughout, with the other kept as `chlz_dcm` for comparison. The
+  production section reuses the noon light field computed above.
+- The chlorophyll-profile text had a wrong formula for $\rho$, wrong units for
+  $\sigma$ and called the first optical depth the 10 % light level (it is
+  the 37 % level).
+- The water-property plot showed the normalised CDOM shape on an axis in
+  m⁻¹. It now shows CDOM absorption at the surface, and labels Raman
+  *back*scattering. Units were added to the axes and colorbars.
 
 ## Behaviour worth knowing
 

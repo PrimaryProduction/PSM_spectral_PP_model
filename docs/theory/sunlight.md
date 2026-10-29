@@ -32,9 +32,10 @@ $$
 
 **Sunrise** from $\cos h_0 = -\tan\phi\tan\delta$, and the time at which the
 sun reaches a given zenith angle (`daylight.zenith_time`) by inverting the
-equation above. The model integrates production from the time when
-$\theta_s = 80^\circ$ in the morning to the matching time in the afternoon,
-where the plane-parallel atmosphere is a good approximation.
+equation above. Production is integrated from sunrise to sunset. Near the
+horizon the plane-parallel clear-sky model is less accurate, but the
+sinusoidal PAR cycle makes the light there small, so this has little effect on
+daily production.
 
 **Day length** follows the model of [Brock (1981)](../references.md#brock1981)
 (compared with alternatives by [Forsythe et al. 1995](../references.md#forsythe1995)):

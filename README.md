@@ -117,7 +117,7 @@ d_lambda = scatter.all()["d_lambda"]                   # band widths, nm
 Pb_m, Al_b = 6.0, 0.02                                 # P-I parameters
 alpha_spec = Al_b * ac * 6022.0 / (2.77 * 36.0 * ac.mean(axis=1)[:, None])
 
-times = daylight.time_range(day, lat, zenith_deg=80, steps=11)
+times = daylight.time_range(day, lat, steps=13)      # sunrise to sunset
 pp = []
 for t in times:
     irs = surface_light.instant(t, lat, par)           # below-surface spectra
@@ -128,7 +128,7 @@ for t in times:
 
 hours = (times - times[0]).total_seconds().to_numpy() / 3600
 daily = np.trapezoid(np.trapezoid(pp, hours, axis=0), config.depths)
-print(f"{daily:.0f} mg C m-2 d-1")                     # -> 354 mg C m-2 d-1
+print(f"{daily:.0f} mg C m-2 d-1")                     # -> 363 mg C m-2 d-1
 ```
 
 See the [tutorial](https://primaryproduction.github.io/PSM_spectral_PP_model/tutorial/)

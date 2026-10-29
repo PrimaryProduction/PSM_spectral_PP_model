@@ -182,7 +182,7 @@ save(fig, "light_field.png")
 Pb_m, Al_b = 6.0, 0.02
 ac, _ = absorption.calc_ac(chlz)
 Al_zl = Al_b * ac * 6022.0 / (2.77 * 36.0 * ac.mean(axis=1)[:, None])
-times = daylight.time_range(day, lat, zenith_deg=80, steps=11)
+times = daylight.time_range(day, lat, steps=13)
 pp = []
 for t in times:
     irs = surface_light.instant(t, lat, par)
@@ -196,7 +196,7 @@ daily = np.trapezoid(pp, hours, axis=0)
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 4.6), sharey=True)
 cols = [SEQ(x) for x in np.linspace(0.25, 1, 6)]
-for i, col in zip(range(6), cols):
+for i, col in zip(range(1, 7), cols):          # skip sunrise (zero light)
     axes[0].plot(pp[i], depths, color=col, label=times[i].strftime("%H:%M"))
 axes[0].set_title("Instantaneous P(z, t), morning to noon", loc="left", fontsize=12)
 axes[0].set_xlabel("mg C m⁻³ h⁻¹")
